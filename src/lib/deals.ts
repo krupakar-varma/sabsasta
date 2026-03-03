@@ -1,0 +1,252 @@
+export interface Deal {
+    id: string
+    platform: string
+    platformColor: string
+    platformBg: string
+    title: string
+    description: string
+    code?: string
+    discount: string
+    category: "food" | "grocery" | "rides" | "shopping" | "all"
+    validUntil: string
+    link: string
+    isHot: boolean
+    minOrder?: number
+    maxDiscount?: number
+  }
+  
+  export const DEALS: Deal[] = [
+    // Swiggy
+    {
+      id: "swiggy-1",
+      platform: "Swiggy",
+      platformColor: "#FC8019",
+      platformBg: "border-[#FC8019]/30 bg-[#FC8019]/5",
+      title: "40% off up to Rs.120",
+      description: "On your first 3 orders of the day",
+      code: "SWIGGY40",
+      discount: "40% OFF",
+      category: "food",
+      validUntil: "Today",
+      link: "https://www.swiggy.com",
+      isHot: true,
+      minOrder: 199,
+      maxDiscount: 120,
+    },
+    {
+      id: "swiggy-2",
+      platform: "Swiggy",
+      platformColor: "#FC8019",
+      platformBg: "border-[#FC8019]/30 bg-[#FC8019]/5",
+      title: "Free delivery on orders above Rs.199",
+      description: "No delivery fee all day",
+      code: "FREESWIGGY",
+      discount: "FREE DELIVERY",
+      category: "food",
+      validUntil: "Today",
+      link: "https://www.swiggy.com",
+      isHot: false,
+      minOrder: 199,
+    },
+    {
+      id: "swiggy-3",
+      platform: "Swiggy Instamart",
+      platformColor: "#FC8019",
+      platformBg: "border-[#FC8019]/30 bg-[#FC8019]/5",
+      title: "Rs.150 off on groceries",
+      description: "On orders above Rs.599",
+      code: "INSTA150",
+      discount: "Rs.150 OFF",
+      category: "grocery",
+      validUntil: "Today",
+      link: "https://www.swiggy.com/instamart",
+      isHot: true,
+      minOrder: 599,
+      maxDiscount: 150,
+    },
+  
+    // Zomato
+    {
+      id: "zomato-1",
+      platform: "Zomato",
+      platformColor: "#CB202D",
+      platformBg: "border-[#CB202D]/30 bg-[#CB202D]/5",
+      title: "60% off up to Rs.120",
+      description: "Valid on select restaurants",
+      code: "ZOMATO60",
+      discount: "60% OFF",
+      category: "food",
+      validUntil: "Today",
+      link: "https://www.zomato.com",
+      isHot: true,
+      minOrder: 149,
+      maxDiscount: 120,
+    },
+    {
+      id: "zomato-2",
+      platform: "Zomato",
+      platformColor: "#CB202D",
+      platformBg: "border-[#CB202D]/30 bg-[#CB202D]/5",
+      title: "Zomato Gold — Free delivery + extra 10%",
+      description: "For Gold members on all orders",
+      discount: "GOLD DEAL",
+      category: "food",
+      validUntil: "Ongoing",
+      link: "https://www.zomato.com/gold",
+      isHot: false,
+    },
+  
+    // Blinkit
+    {
+      id: "blinkit-1",
+      platform: "Blinkit",
+      platformColor: "#F8CE12",
+      platformBg: "border-yellow-500/30 bg-yellow-500/5",
+      title: "Rs.100 off on first order",
+      description: "New users only",
+      code: "BLINK100",
+      discount: "Rs.100 OFF",
+      category: "grocery",
+      validUntil: "Today",
+      link: "https://blinkit.com",
+      isHot: true,
+      minOrder: 299,
+      maxDiscount: 100,
+    },
+    {
+      id: "blinkit-2",
+      platform: "Blinkit",
+      platformColor: "#F8CE12",
+      platformBg: "border-yellow-500/30 bg-yellow-500/5",
+      title: "20% off on fresh fruits & vegetables",
+      description: "Every day fresh deals",
+      discount: "20% OFF",
+      category: "grocery",
+      validUntil: "Today",
+      link: "https://blinkit.com",
+      isHot: false,
+    },
+  
+    // Zepto
+    {
+      id: "zepto-1",
+      platform: "Zepto",
+      platformColor: "#8B5CF6",
+      platformBg: "border-purple-500/30 bg-purple-500/5",
+      title: "Rs.125 off on first 5 orders",
+      description: "Use code at checkout",
+      code: "ZEPTO125",
+      discount: "Rs.125 OFF",
+      category: "grocery",
+      validUntil: "Today",
+      link: "https://www.zepto.com",
+      isHot: true,
+      minOrder: 199,
+      maxDiscount: 125,
+    },
+    {
+      id: "zepto-2",
+      platform: "Zepto",
+      platformColor: "#8B5CF6",
+      platformBg: "border-purple-500/30 bg-purple-500/5",
+      title: "Free delivery all week",
+      description: "No minimum order required",
+      code: "ZEPTOFREE",
+      discount: "FREE DELIVERY",
+      category: "grocery",
+      validUntil: "This week",
+      link: "https://www.zepto.com",
+      isHot: false,
+    },
+  
+    // Uber
+    {
+      id: "uber-1",
+      platform: "Uber",
+      platformColor: "#000000",
+      platformBg: "border-white/20 bg-white/3",
+      title: "50% off up to Rs.150 on UberGo",
+      description: "First ride of the day",
+      code: "UBERGO50",
+      discount: "50% OFF",
+      category: "rides",
+      validUntil: "Today",
+      link: "https://www.uber.com",
+      isHot: true,
+      maxDiscount: 150,
+    },
+    {
+      id: "uber-2",
+      platform: "Uber",
+      platformColor: "#000000",
+      platformBg: "border-white/20 bg-white/3",
+      title: "Rs.75 off on UberAuto",
+      description: "Valid between 10am - 5pm",
+      code: "AUTO75",
+      discount: "Rs.75 OFF",
+      category: "rides",
+      validUntil: "Today",
+      link: "https://www.uber.com",
+      isHot: false,
+    },
+  
+    // Ola
+    {
+      id: "ola-1",
+      platform: "Ola",
+      platformColor: "#EAB308",
+      platformBg: "border-yellow-500/30 bg-yellow-500/5",
+      title: "30% off on first 3 rides",
+      description: "New users get extra savings",
+      code: "OLA30",
+      discount: "30% OFF",
+      category: "rides",
+      validUntil: "Today",
+      link: "https://www.olacabs.com",
+      isHot: true,
+    },
+  
+    // Amazon
+    {
+      id: "amazon-1",
+      platform: "Amazon",
+      platformColor: "#FF9900",
+      platformBg: "border-[#FF9900]/30 bg-[#FF9900]/5",
+      title: "10% instant discount with SBI card",
+      description: "On electronics above Rs.5000",
+      discount: "10% OFF",
+      category: "shopping",
+      validUntil: "This month",
+      link: "https://www.amazon.in",
+      isHot: true,
+    },
+    {
+      id: "amazon-2",
+      platform: "Amazon",
+      platformColor: "#FF9900",
+      platformBg: "border-[#FF9900]/30 bg-[#FF9900]/5",
+      title: "No cost EMI on all smartphones",
+      description: "0% interest, 3-12 months",
+      discount: "NO COST EMI",
+      category: "shopping",
+      validUntil: "Ongoing",
+      link: "https://www.amazon.in",
+      isHot: false,
+    },
+  
+    // Rapido
+    {
+      id: "rapido-1",
+      platform: "Rapido",
+      platformColor: "#22C55E",
+      platformBg: "border-green-500/30 bg-green-500/5",
+      title: "Flat Rs.40 off on bike rides",
+      description: "No minimum fare required",
+      code: "RAPIDO40",
+      discount: "Rs.40 OFF",
+      category: "rides",
+      validUntil: "Today",
+      link: "https://rapido.bike",
+      isHot: true,
+    },
+  ]
