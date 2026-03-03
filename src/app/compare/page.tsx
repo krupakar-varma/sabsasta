@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -143,19 +142,30 @@ function CompareContent() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#FF9900] font-semibold">Amazon</span>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-[#FF9900] font-semibold">📦 Amazon</span>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <a
                     href={product.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`rounded-lg px-4 py-2 text-xs font-bold hover:opacity-90 transition-opacity ${
+                    className={`flex-1 rounded-lg px-4 py-2 text-xs font-bold text-center hover:opacity-90 transition-opacity ${
                       isCheapest
                         ? "bg-gradient-to-r from-[#FF6B35] to-[#FF9500] text-white"
                         : "bg-white/8 text-white/70"
                     }`}
                   >
                     Buy on Amazon
+                  </a>
+                  <a
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(product.name + " review")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg bg-red-600/20 border border-red-600/30 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-600/30 transition-all"
+                  >
+                    ▶ Review
                   </a>
                 </div>
               </div>
