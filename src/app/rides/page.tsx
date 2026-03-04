@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Nav from "@/components/Nav"
+import { estimateRide } from "@/lib/rideEstimator"
 
 interface RideResult {
   id: string
