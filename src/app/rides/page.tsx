@@ -22,10 +22,11 @@ interface RideResult {
   timeMin: number
   platformColor: string
   bookLink: string
+  costPerKm: number
   isCheapest?: boolean
 }
 
-type FilterType = "all" | "bike" | "auto" | "cab" | "premium"
+type FilterType = "all" | "bike" | "auto" | "cab" | "premium" | "metro" | "ev"
 
 const CITIES = [
   "bengaluru", "mumbai", "delhi", "hyderabad",
@@ -85,12 +86,23 @@ const PLATFORM_BORDER: Record<string, string> = {
   Uber: "border-white/15 bg-white/3",
   Ola: "border-yellow-500/20 bg-yellow-500/5",
   Rapido: "border-green-500/20 bg-green-500/5",
+  InDrive: "border-blue-500/20 bg-blue-500/5",
+  BluSmart: "border-cyan-500/20 bg-cyan-500/5",
+  Metro: "border-purple-500/20 bg-purple-500/5",
 }
 
 const PLATFORM_BTN: Record<string, string> = {
   Uber: "bg-white text-black",
   Ola: "bg-yellow-400 text-black",
   Rapido: "bg-green-400 text-black",
+  InDrive: "bg-blue-500 text-white",
+  BluSmart: "bg-cyan-400 text-black",
+  Metro: "bg-purple-500 text-white",
+}
+
+const PLATFORM_COLORS: Record<string, string> = {
+  Uber: "#ffffff", Ola: "#EAB308", Rapido: "#22C55E",
+  InDrive: "#3B82F6", BluSmart: "#06B6D4", Metro: "#A855F7",
 }
 
 const FILTERS: { label: string; value: FilterType }[] = [
@@ -99,7 +111,57 @@ const FILTERS: { label: string; value: FilterType }[] = [
   { label: "🛺 Autos", value: "auto" },
   { label: "🚗 Cabs", value: "cab" },
   { label: "⭐ Premium", value: "premium" },
+  { label: "🚇 Metro", value: "metro" },
+  { label: "⚡ EV", value: "ev" },
 ]
+
+// Surge hours data for chart
+const SURGE_HOURS = [
+  { hour: "12am", level: 1, label: "Low" },
+  { hour: "1am",  level: 1, label: "Low" },
+  { hour: "2am",  level: 1, label: "Low" },
+  { hour: "3am",  level: 1, label: "Low" },
+  { hour: "4am",  level: 1, label: "Low" },
+  { hour: "5am",  level: 2, label: "Medium" },
+  { hour: "6am",  level: 2, label: "Medium" },
+  { hour: "7am",  level: 3, label: "High" },
+  { hour: "8am",  level: 4, label: "Rush Hour" },
+  { hour: "9am",  level: 4, label: "Rush Hour" },
+  { hour: "10am", level: 3, label: "High" },
+  { hour: "11am", level: 2, label: "Medium" },
+  { hour: "12pm", level: 2, label: "Medium" },
+  { hour: "1pm",  level: 2, label: "Medium" },
+  { hour: "2pm",  level: 1, label: "Low" },
+  { hour: "3pm",  level: 1, label: "Low" },
+  { hour: "4pm",  level: 2, label: "Medium" },
+  { hour: "5pm",  level: 4, label: "Rush Hour" },
+  { hour: "6pm",  level: 4, label: "Rush Hour" },
+  { hour: "7pm",  level: 4, label: "Rush Hour" },
+  { hour: "8pm",  level: 3, label: "High" },
+  { hour: "9pm",  level: 2, label: "Medium" },
+  { hour: "10pm", level: 2, label: "Medium" },
+  { hour: "11pm", level: 1, label: "Low" },
+]
+
+const SURGE_COLORS: Record<number, string> = {
+  1: "#00C875",
+  2: "#FF9500",
+  3: "#FF6B35",
+  4: "#EF4444",
+}
+
+const SURGE_BG: Record<number, string> = {
+  1: "bg-[#00C875]",
+  2: "bg-[#FF9500]",
+  3: "bg-[#FF6B35]",
+  4: "bg-red-500",
+}
+
+function getBestBookingTimes(): string {
+  const now = new Date().getHours()
+  const good = SURGE_HOURS.filter(h => h.level === 1).map(h => h.hour)
+  return good.slice(0, 3).join(", ")
+}
 
 export default function RidesPage() {
   const [city, setCity] = useState("bengaluru")
@@ -113,6 +175,43 @@ export default function RidesPage() {
   const [routeInfo, setRouteInfo] = useState({ distanceKm: 0, timeMin: 0, from: "", to: "" })
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
+  const [detectingLocation, setDetectingLocation] = useState(false)
+  const [showSurgeChart, setShowSurgeChart] = useState(false)
+  const [showCostBreakdown, setShowCostBreakdown] = useState<string | null>(null)
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Location detection not supported on this browser")
+      return
+    }
+    setDetectingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords
+          const res = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          )
+          const data = await res.json()
+          if (data.results?.[0]) {
+            const address = data.results[0].formatted_address
+            const short = address.split(",")[0]
+            setFrom(short)
+          } else {
+            setFrom(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+          }
+        } catch {
+          setError("Could not get your address. Enter manually.")
+        } finally {
+          setDetectingLocation(false)
+        }
+      },
+      () => {
+        setError("Location permission denied. Please enter manually.")
+        setDetectingLocation(false)
+      }
+    )
+  }
 
   const fetchRides = async (f: string, t: string, c: string) => {
     if (!f.trim() || !t.trim()) {
@@ -151,6 +250,7 @@ export default function RidesPage() {
   const filtered = filter === "all" ? results : results.filter((r) => r.category === filter)
   const cheapest = results[0] || null
   const surgeRides = results.filter((r) => r.hasSurge)
+  const currentHour = new Date().getHours()
 
   const handleWhatsAppShare = () => {
     if (!cheapest) return
@@ -165,13 +265,19 @@ export default function RidesPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const openGoogleMaps = () => {
+    if (!routeInfo.from || !routeInfo.to) return
+    const url = `https://www.google.com/maps/dir/${encodeURIComponent(routeInfo.from)}/${encodeURIComponent(routeInfo.to)}`
+    window.open(url, "_blank")
+  }
+
   return (
     <main className="min-h-screen bg-[#07070F] text-white">
       <Nav />
       <div className="mx-auto max-w-2xl px-4 py-8">
 
         <h1 className="text-2xl font-extrabold mb-1">Ride Price Comparison</h1>
-        <p className="text-white/40 text-sm mb-6">Uber vs Ola vs Rapido — real price estimates + direct booking</p>
+        <p className="text-white/40 text-sm mb-6">Uber · Ola · Rapido · InDrive · BluSmart · Metro — all in one place</p>
 
         {/* Rush hour warning */}
         {isRushHour && (
@@ -179,6 +285,10 @@ export default function RidesPage() {
             <span>⚠️</span>
             <span className="text-orange-400 font-semibold">Rush hour active</span>
             <span className="text-white/50">— surge pricing on some platforms</span>
+            <button onClick={() => setShowSurgeChart(!showSurgeChart)}
+              className="ml-auto text-xs text-[#FF9500] underline">
+              Best times →
+            </button>
           </div>
         )}
 
@@ -200,28 +310,35 @@ export default function RidesPage() {
             </div>
           </div>
 
-          {/* From / To inputs */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex-1 space-y-2">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="text-[10px] text-white/35 uppercase tracking-wider mb-1">From</div>
+          {/* From input with location detect */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="text-[10px] text-white/35 uppercase tracking-wider mb-1">From</div>
+              <div className="flex items-center gap-2">
                 <input value={from} onChange={(e) => setFrom(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchRides(from, to, city)}
-                  className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder-white/30"
-                  placeholder="Koramangala, Bandra, CP..." />
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="text-[10px] text-white/35 uppercase tracking-wider mb-1">To</div>
-                <input value={to} onChange={(e) => setTo(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && fetchRides(from, to, city)}
-                  className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder-white/30"
-                  placeholder="Airport, Whitefield, Powai..." />
+                  className="flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder-white/30"
+                  placeholder="Koramangala, Bandra..." />
+                <button onClick={detectLocation} disabled={detectingLocation}
+                  className="shrink-0 text-[#FF9500] text-sm hover:opacity-70 transition-opacity"
+                  title="Detect my location">
+                  {detectingLocation ? "⏳" : "📍"}
+                </button>
               </div>
             </div>
             <button onClick={swapLocations}
               className="rounded-xl border border-white/10 bg-white/5 p-3 text-xl hover:border-[#FF6B35]/40 transition-all">
               ⇅
             </button>
+          </div>
+
+          {/* To input */}
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 mb-4">
+            <div className="text-[10px] text-white/35 uppercase tracking-wider mb-1">To</div>
+            <input value={to} onChange={(e) => setTo(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && fetchRides(from, to, city)}
+              className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder-white/30"
+              placeholder="Airport, Whitefield, Powai..." />
           </div>
 
           {error && <p className="text-xs text-red-400 mb-3">⚠️ {error}</p>}
@@ -234,7 +351,7 @@ export default function RidesPage() {
 
         {/* Popular routes */}
         <div className="mb-5">
-          <p className="text-xs text-white/30 mb-2 uppercase tracking-wider">Popular routes in {CITY_LABELS[city]}</p>
+          <p className="text-xs text-white/30 mb-2 uppercase tracking-wider">Popular in {CITY_LABELS[city]}</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(POPULAR_ROUTES[city] || []).map((route) => (
               <button key={route.label}
@@ -244,6 +361,68 @@ export default function RidesPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Surge hours chart */}
+        <div className="mb-5">
+          <button onClick={() => setShowSurgeChart(!showSurgeChart)}
+            className="w-full rounded-xl border border-white/7 bg-white/2 p-3 flex items-center justify-between text-sm hover:border-[#FF6B35]/30 transition-all">
+            <span className="font-semibold">📊 Best Time to Book — Surge Chart</span>
+            <span className="text-white/40 text-xs">{showSurgeChart ? "Hide ▲" : "Show ▼"}</span>
+          </button>
+
+          {showSurgeChart && (
+            <div className="rounded-xl border border-white/7 bg-[#0D0D1B] p-4 mt-2">
+              <p className="text-xs text-white/40 mb-3">Typical surge pattern for Indian cities. Green = cheap, Red = expensive.</p>
+
+              {/* Bar chart */}
+              <div className="flex items-end gap-0.5 h-16 mb-2">
+                {SURGE_HOURS.map((h, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div
+                      className={`w-full rounded-sm ${SURGE_BG[h.level]} ${i === currentHour ? "ring-1 ring-white" : ""}`}
+                      style={{ height: `${h.level * 14}px` }}
+                      title={`${h.hour}: ${h.label}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Hour labels — show every 4 hours */}
+              <div className="flex gap-0.5 mb-3">
+                {SURGE_HOURS.map((h, i) => (
+                  <div key={i} className="flex-1 text-center">
+                    {i % 4 === 0 && (
+                      <span className={`text-[8px] ${i === currentHour ? "text-white font-bold" : "text-white/25"}`}>
+                        {h.hour}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Legend */}
+              <div className="flex gap-3 flex-wrap text-xs">
+                {[
+                  { level: 1, label: "Low — Best time" },
+                  { level: 2, label: "Medium" },
+                  { level: 3, label: "High" },
+                  { level: 4, label: "Rush Hour" },
+                ].map((l) => (
+                  <div key={l.level} className="flex items-center gap-1.5">
+                    <div className={`h-2.5 w-2.5 rounded-sm ${SURGE_BG[l.level]}`} />
+                    <span className="text-white/40">{l.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 rounded-lg bg-[#00C875]/10 border border-[#00C875]/20 p-2.5">
+                <p className="text-xs text-[#00C875]">
+                  💡 Best times to book today: <strong>{getBestBookingTimes()}</strong> — no surge, lowest prices
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filter tabs */}
@@ -268,15 +447,19 @@ export default function RidesPage() {
 
         {/* Route info */}
         {!loading && routeInfo.distanceKm > 0 && (
-          <div className="rounded-xl border border-white/7 bg-white/3 p-3 mb-5 flex items-center justify-between text-sm flex-wrap gap-2">
+          <div className="rounded-xl border border-white/7 bg-white/3 p-3 mb-5 flex items-center justify-between flex-wrap gap-2">
             <div className="text-white/50 text-xs">
               <span className="text-white font-semibold">{routeInfo.from.split(",")[0]}</span>
               {" → "}
               <span className="text-white font-semibold">{routeInfo.to.split(",")[0]}</span>
             </div>
-            <div className="flex gap-3 text-xs text-white/40">
-              <span>📍 {routeInfo.distanceKm} km</span>
-              <span>⏱ ~{routeInfo.timeMin} min</span>
+            <div className="flex gap-3 items-center">
+              <span className="text-xs text-white/40">📍 {routeInfo.distanceKm} km</span>
+              <span className="text-xs text-white/40">⏱ ~{routeInfo.timeMin} min</span>
+              <button onClick={openGoogleMaps}
+                className="text-xs text-[#FF9500] border border-[#FF9500]/30 rounded-full px-2.5 py-1 hover:bg-[#FF9500]/10 transition-all">
+                🗺️ Map →
+              </button>
             </div>
           </div>
         )}
@@ -288,7 +471,7 @@ export default function RidesPage() {
               <div>
                 <div className="text-xs font-bold text-[#00C875] mb-1 uppercase tracking-wider">Cheapest Option</div>
                 <div className="font-semibold text-sm">{cheapest.type}</div>
-                <div className="text-xs text-white/40 mt-0.5">{cheapest.eta} min away · {routeInfo.distanceKm} km</div>
+                <div className="text-xs text-white/40 mt-0.5">{cheapest.eta} min away · Rs.{cheapest.costPerKm}/km</div>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-extrabold text-[#00C875]">{cheapest.priceRange}</div>
@@ -302,13 +485,17 @@ export default function RidesPage() {
                 className={`flex-1 rounded-lg py-2.5 text-xs font-bold text-center hover:opacity-90 transition-opacity ${PLATFORM_BTN[cheapest.platform] || "bg-white text-black"}`}>
                 Book {cheapest.platform} →
               </a>
+              <button onClick={openGoogleMaps}
+                className="rounded-lg bg-blue-500/20 border border-blue-500/30 px-3 py-2.5 text-xs font-bold text-blue-400 hover:bg-blue-500/30 transition-all">
+                🗺️ Route
+              </button>
               <button onClick={handleWhatsAppShare}
                 className="rounded-lg bg-[#25D366]/20 border border-[#25D366]/30 px-3 py-2.5 text-xs font-bold text-[#25D366] hover:bg-[#25D366]/30 transition-all">
-                📲 Share
+                📲
               </button>
               <button onClick={handleCopyPrice}
                 className="rounded-lg bg-white/8 border border-white/10 px-3 py-2.5 text-xs font-bold text-white/60 hover:bg-white/12 transition-all">
-                {copied ? "✓ Copied" : "📋 Copy"}
+                {copied ? "✓" : "📋"}
               </button>
             </div>
           </div>
@@ -318,52 +505,77 @@ export default function RidesPage() {
         {!loading && filtered.length > 0 && (
           <div className="space-y-3 mb-6">
             {filtered.map((ride) => (
-              <div key={ride.id}
-                className={`rounded-2xl border p-4 transition-all ${
+              <div key={ride.id}>
+                <div className={`rounded-2xl border p-4 transition-all ${
                   ride.isCheapest ? "border-[#00C875]/40 bg-[#00C875]/5" : PLATFORM_BORDER[ride.platform] || "border-white/7 bg-white/2"
                 }`}>
-                <div className="flex items-center gap-3">
-                  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: ride.platformColor }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <span className="font-bold text-sm">{ride.type}</span>
-                      {ride.isCheapest && (
-                        <span className="rounded-full bg-[#00C875]/15 px-2 py-0.5 text-[9px] font-bold text-[#00C875]">CHEAPEST</span>
-                      )}
-                      {ride.hasSurge && (
-                        <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[9px] font-bold text-red-400">{ride.surgeMultiplier}x SURGE</span>
-                      )}
-                      {ride.savingsVsMax > 50 && !ride.isCheapest && (
-                        <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-400">Save Rs.{ride.savingsVsMax}</span>
-                      )}
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 rounded-full shrink-0"
+                      style={{ backgroundColor: PLATFORM_COLORS[ride.platform] || "#fff" }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="font-bold text-sm">{ride.type}</span>
+                        {ride.isCheapest && (
+                          <span className="rounded-full bg-[#00C875]/15 px-2 py-0.5 text-[9px] font-bold text-[#00C875]">CHEAPEST</span>
+                        )}
+                        {ride.hasSurge && (
+                          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[9px] font-bold text-red-400">{ride.surgeMultiplier}x SURGE</span>
+                        )}
+                        {ride.savingsVsMax > 50 && !ride.isCheapest && (
+                          <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-400">Save Rs.{ride.savingsVsMax}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-white/40 flex items-center gap-2">
+                        <span>{ride.eta} min away</span>
+                        <span>·</span>
+                        <button onClick={() => setShowCostBreakdown(showCostBreakdown === ride.id ? null : ride.id)}
+                          className="text-[#FF9500] hover:underline">
+                          Rs.{ride.costPerKm}/km
+                        </button>
+                        {ride.hasSurge && <span className="text-white/25">Base Rs.{ride.basePrice}</span>}
+                      </div>
                     </div>
-                    <div className="text-xs text-white/40">
-                      {ride.eta} min away
-                      {ride.hasSurge && <span className="ml-2 text-white/25">Base Rs.{ride.basePrice}</span>}
+                    <div className="text-right shrink-0">
+                      <div className={`text-lg font-extrabold ${ride.isCheapest ? "text-[#00C875]" : "text-white"}`}>
+                        {ride.priceRange}
+                      </div>
+                      <a href={ride.bookLink} target="_blank" rel="noopener noreferrer"
+                        className={`mt-1 inline-block rounded-lg px-3 py-1.5 text-xs font-bold hover:opacity-90 transition-opacity ${
+                          ride.isCheapest ? PLATFORM_BTN[ride.platform] || "bg-white text-black" : "bg-white/8 text-white/60"
+                        }`}>
+                        Book →
+                      </a>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className={`text-lg font-extrabold ${ride.isCheapest ? "text-[#00C875]" : "text-white"}`}>
-                      {ride.priceRange}
+
+                  {/* Cost breakdown */}
+                  {showCostBreakdown === ride.id && (
+                    <div className="mt-3 pt-3 border-t border-white/7 grid grid-cols-3 gap-2">
+                      <div className="rounded-lg bg-white/3 p-2.5 text-center">
+                        <div className="text-xs text-white/30 mb-1">Base Fare</div>
+                        <div className="text-sm font-bold text-white">Rs.{ride.basePrice}</div>
+                      </div>
+                      <div className="rounded-lg bg-white/3 p-2.5 text-center">
+                        <div className="text-xs text-white/30 mb-1">Per km</div>
+                        <div className="text-sm font-bold text-white">Rs.{ride.costPerKm}</div>
+                      </div>
+                      <div className="rounded-lg bg-white/3 p-2.5 text-center">
+                        <div className="text-xs text-white/30 mb-1">Distance</div>
+                        <div className="text-sm font-bold text-white">{ride.distanceKm} km</div>
+                      </div>
                     </div>
-                    <a href={ride.bookLink} target="_blank" rel="noopener noreferrer"
-                      className={`mt-1 inline-block rounded-lg px-3 py-1.5 text-xs font-bold hover:opacity-90 transition-opacity ${
-                        ride.isCheapest ? `${PLATFORM_BTN[ride.platform]}` : "bg-white/8 text-white/60"
-                      }`}>
-                      Book →
-                    </a>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Note about prices */}
+        {/* Note */}
         {!loading && results.length > 0 && (
           <div className="rounded-xl border border-white/7 bg-white/2 p-3 mb-5">
             <p className="text-xs text-white/35 leading-relaxed">
-              💡 Prices are estimates based on {CITY_LABELS[city]} base rates. Actual prices may vary slightly due to live traffic, demand, and surge. Click <strong className="text-white/60">Book →</strong> to see exact price in the app.
+              💡 Prices are estimates based on {CITY_LABELS[city]} base rates. Actual prices may vary due to live traffic and surge. Click <strong className="text-white/60">Book →</strong> to see exact price in app.
             </p>
           </div>
         )}
@@ -375,9 +587,9 @@ export default function RidesPage() {
               <span className="text-xl">🤖</span>
               <p className="text-sm text-white/70 leading-relaxed">
                 {surgeRides.length > 0
-                  ? `${surgeRides.map((r) => r.platform).filter((v, i, a) => a.indexOf(v) === i).join(" & ")} has surge pricing right now. `
+                  ? `${surgeRides.map((r) => r.platform).filter((v, i, a) => a.indexOf(v) === i).join(" & ")} has surge pricing. `
                   : "No surge pricing active. "}
-                {cheapest && `${cheapest.type} is cheapest at ${cheapest.priceRange}. `}
+                {cheapest && `${cheapest.type} is cheapest at ${cheapest.priceRange} (Rs.${cheapest.costPerKm}/km). `}
                 {surgeRides.length > 0 ? "Try Rapido or Ola to avoid surge." : "Good time to book!"}
               </p>
             </div>
@@ -389,7 +601,7 @@ export default function RidesPage() {
           <div className="text-center py-16 text-white/30">
             <div className="text-5xl mb-3">🚗</div>
             <p className="text-sm">Enter your route above to compare prices</p>
-            <p className="text-xs mt-2 text-white/20">Works for Bengaluru, Mumbai, Delhi, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad</p>
+            <p className="text-xs mt-2 text-white/20">8 cities · Uber, Ola, Rapido, InDrive, BluSmart, Metro</p>
           </div>
         )}
 
