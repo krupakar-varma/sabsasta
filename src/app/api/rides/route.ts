@@ -226,13 +226,13 @@ function calculatePrice(distanceKm: number, timeMin: number, rate: any, rush: bo
 function buildDeepLink(platform: string, vehicleType: string, from: string, to: string): string {
   const ef = encodeURIComponent(from)
   const et = encodeURIComponent(to)
-  if (platform === "Uber") return `https://m.uber.com/ul/?action=setPickup&pickup[formatted_address]=${ef}&dropoff[formatted_address]=${et}`
-  if (platform === "Ola") return `https://www.olacabs.com/?pickup=${ef}&drop=${et}`
+  if (platform === "Uber") return `https://m.uber.com/ul/?action=setPickup&pickup[formatted_address]=${ef}&dropoff[formatted_address]=${et}&link_text=View+on+Uber&client_id=sabsasta`
+  if (platform === "Ola") return `https://olawebsite.page.link/?link=https://www.olacabs.com/?pickup%3D${ef}%26drop%3D${et}&apn=com.ani.ola&isi=539179831&ibi=com.oligosoft.ola`
   if (platform === "Rapido") {
     const rideType = vehicleType === "Bike" ? "bike" : "auto"
     return `https://rapido.bike/book?source=${ef}&destination=${et}&rideType=${rideType}`
   }
-  if (platform === "InDrive") return `https://indrive.com/app/order?from=${ef}&to=${et}`
+  if (platform === "InDrive") return `https://indrive.onelink.me/help?af_dp=indrive%3A%2F%2Forder%3Ffrom%3D${ef}%26to%3D${et}&af_web_dp=https%3A%2F%2Findrive.com`
   if (platform === "BluSmart") return `https://blu-smart.com/book?pickup=${ef}&drop=${et}`
   return BOOK_LINKS[platform] || "#"
 }
