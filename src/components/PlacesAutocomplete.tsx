@@ -170,6 +170,7 @@ export default function PlacesAutocomplete({
             <button
               key={s.place_id}
               onMouseDown={(e) => { e.preventDefault(); handleSelect(s) }}
+              onClick={() => handleSelect(s)}
               className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors ${
                 i === activeIndex ? "bg-[#FF6B35]/15" : "hover:bg-white/5"
               } ${i !== 0 ? "border-t border-white/5" : ""}`}
