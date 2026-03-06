@@ -2,29 +2,31 @@
 import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
 
+// Rates calibrated from real app screenshots (Mar 2026)
+// Hyderabad: Ameerpet→Stadium 7km — Uber Bike ₹159, Auto ₹223, Go ₹300 | Rapido Bike ₹201, Auto ₹209
 const RATES: Record<string, any> = {
   bengaluru: {
     Rapido: {
-      Bike:  { base: 15, perKm: 7,  perMin: 0.5,  minFare: 25,  surge: 1.0, rangePercent: 8,  category: "bike"    },
-      Auto:  { base: 20, perKm: 12, perMin: 0.75, minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Bike:  { base: 20, perKm: 12, perMin: 1.0, minFare: 40,  surge: 1.0, rangePercent: 8,  category: "bike"    },
+      Auto:  { base: 30, perKm: 16, perMin: 1.5, minFare: 60,  surge: 1.0, rangePercent: 10, category: "auto"    },
     },
     Ola: {
-      Auto:  { base: 25, perKm: 13, perMin: 1,    minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 40, perKm: 14, perMin: 1.25, minFare: 80,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 50, perKm: 18, perMin: 1.5,  minFare: 100, surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 30, perKm: 17, perMin: 1.5, minFare: 60,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 50, perKm: 20, perMin: 2.0, minFare: 90,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 70, perKm: 26, perMin: 2.5, minFare: 130, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 15, perKm: 8,  perMin: 0.75, minFare: 30,  surge: 1.2, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 25, perKm: 14, perMin: 1,    minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 45, perKm: 16, perMin: 1.5,  minFare: 90,  surge: 1.3, rangePercent: 15, category: "cab"     },
-      Premier: { base: 60, perKm: 22, perMin: 2,    minFare: 120, surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 20, perKm: 13, perMin: 1.2, minFare: 45,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 30, perKm: 18, perMin: 1.5, minFare: 65,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 55, perKm: 22, perMin: 2.0, minFare: 110, surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 80, perKm: 30, perMin: 3.0, minFare: 160, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 35, perKm: 13, perMin: 1, minFare: 70, surge: 1.0, rangePercent: 20, category: "cab" },
-      SUV:   { base: 55, perKm: 18, perMin: 1.5, minFare: 110, surge: 1.0, rangePercent: 20, category: "premium" },
+      Sedan: { base: 45, perKm: 18, perMin: 1.5, minFare: 85,  surge: 1.0, rangePercent: 20, category: "cab"     },
+      SUV:   { base: 70, perKm: 24, perMin: 2.0, minFare: 130, surge: 1.0, rangePercent: 20, category: "premium" },
     },
     BluSmart: {
-      Electric: { base: 50, perKm: 15, perMin: 1.25, minFare: 90, surge: 1.0, rangePercent: 5, category: "ev" },
+      Electric: { base: 60, perKm: 20, perMin: 1.5, minFare: 110, surge: 1.0, rangePercent: 5, category: "ev" },
     },
     Metro: {
       "Namma Metro": { base: 10, perKm: 3.5, perMin: 0, minFare: 10, surge: 1.0, rangePercent: 0, category: "metro" },
@@ -32,22 +34,22 @@ const RATES: Record<string, any> = {
   },
   mumbai: {
     Rapido: {
-      Bike:  { base: 15, perKm: 6,  perMin: 0.5,  minFare: 25,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 20, perKm: 11, perMin: 0.75, minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 20, perKm: 11, perMin: 1.0, minFare: 35,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 28, perKm: 15, perMin: 1.5, minFare: 55,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 22, perKm: 12, perMin: 1,    minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 38, perKm: 13, perMin: 1.25, minFare: 75,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 50, perKm: 17, perMin: 1.5,  minFare: 100, surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 28, perKm: 16, perMin: 1.5, minFare: 55,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 48, perKm: 19, perMin: 2.0, minFare: 88,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 68, perKm: 25, perMin: 2.5, minFare: 125, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 15, perKm: 7,  perMin: 0.75, minFare: 28,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 22, perKm: 13, perMin: 1,    minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 42, perKm: 15, perMin: 1.5,  minFare: 85,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 58, perKm: 21, perMin: 2,    minFare: 115, surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 18, perKm: 12, perMin: 1.2, minFare: 40,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 28, perKm: 17, perMin: 1.5, minFare: 60,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 52, perKm: 21, perMin: 2.0, minFare: 105, surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 78, perKm: 28, perMin: 2.8, minFare: 150, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 32, perKm: 12, perMin: 1, minFare: 65, surge: 1.0, rangePercent: 20, category: "cab" },
+      Sedan: { base: 42, perKm: 17, perMin: 1.5, minFare: 80,  surge: 1.0, rangePercent: 20, category: "cab" },
     },
     Metro: {
       "Mumbai Metro": { base: 10, perKm: 2.5, perMin: 0, minFare: 10, surge: 1.0, rangePercent: 0, category: "metro" },
@@ -55,49 +57,51 @@ const RATES: Record<string, any> = {
   },
   delhi: {
     Rapido: {
-      Bike:  { base: 12, perKm: 6,  perMin: 0.5,  minFare: 22,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 18, perKm: 11, perMin: 0.75, minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 18, perKm: 11, perMin: 1.0, minFare: 32,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 25, perKm: 14, perMin: 1.5, minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 20, perKm: 12, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 35, perKm: 13, perMin: 1.25, minFare: 70,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 48, perKm: 17, perMin: 1.5,  minFare: 95,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 25, perKm: 15, perMin: 1.5, minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 45, perKm: 18, perMin: 2.0, minFare: 85,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 65, perKm: 24, perMin: 2.5, minFare: 120, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 12, perKm: 7,  perMin: 0.75, minFare: 25,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 20, perKm: 12, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 40, perKm: 14, perMin: 1.5,  minFare: 80,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 55, perKm: 20, perMin: 2,    minFare: 110, surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 16, perKm: 11, perMin: 1.2, minFare: 35,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 25, perKm: 16, perMin: 1.5, minFare: 55,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 50, perKm: 20, perMin: 2.0, minFare: 100, surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 75, perKm: 27, perMin: 2.8, minFare: 145, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 30, perKm: 11, perMin: 1, minFare: 60, surge: 1.0, rangePercent: 20, category: "cab" },
-      SUV:   { base: 50, perKm: 16, perMin: 1.5, minFare: 100, surge: 1.0, rangePercent: 20, category: "premium" },
+      Sedan: { base: 40, perKm: 16, perMin: 1.5, minFare: 75,  surge: 1.0, rangePercent: 20, category: "cab"     },
+      SUV:   { base: 65, perKm: 22, perMin: 2.0, minFare: 120, surge: 1.0, rangePercent: 20, category: "premium" },
     },
     BluSmart: {
-      Electric: { base: 45, perKm: 14, perMin: 1.2, minFare: 85, surge: 1.0, rangePercent: 5, category: "ev" },
+      Electric: { base: 55, perKm: 18, perMin: 1.5, minFare: 100, surge: 1.0, rangePercent: 5, category: "ev" },
     },
     Metro: {
       "Delhi Metro": { base: 10, perKm: 2.5, perMin: 0, minFare: 10, surge: 1.0, rangePercent: 0, category: "metro" },
     },
   },
+  // Calibrated from real screenshots: Ameerpet→Stadium 7km
+  // Uber: Bike ₹159, Auto ₹223, Go ₹300 | Rapido: Bike ₹201, Auto ₹209
   hyderabad: {
     Rapido: {
-      Bike:  { base: 12, perKm: 6,  perMin: 0.5,  minFare: 22,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 18, perKm: 11, perMin: 0.75, minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 25, perKm: 15, perMin: 1.2, minFare: 50,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 30, perKm: 17, perMin: 1.5, minFare: 60,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 20, perKm: 11, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 35, perKm: 13, perMin: 1.25, minFare: 70,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 45, perKm: 16, perMin: 1.5,  minFare: 90,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 28, perKm: 17, perMin: 1.5, minFare: 58,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 48, perKm: 20, perMin: 2.0, minFare: 90,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 68, perKm: 26, perMin: 2.5, minFare: 125, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 12, perKm: 7,  perMin: 0.75, minFare: 25,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 20, perKm: 11, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 38, perKm: 14, perMin: 1.5,  minFare: 78,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 52, perKm: 19, perMin: 2,    minFare: 105, surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 18, perKm: 13, perMin: 1.2, minFare: 45,  surge: 1.0, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 28, perKm: 18, perMin: 1.5, minFare: 60,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 50, perKm: 22, perMin: 2.0, minFare: 100, surge: 1.0, rangePercent: 15, category: "cab"     },
+      Premier: { base: 75, perKm: 28, perMin: 2.8, minFare: 145, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 30, perKm: 11, perMin: 1, minFare: 60, surge: 1.0, rangePercent: 20, category: "cab" },
+      Sedan: { base: 40, perKm: 16, perMin: 1.5, minFare: 75,  surge: 1.0, rangePercent: 20, category: "cab" },
     },
     Metro: {
       "Hyderabad Metro": { base: 10, perKm: 3, perMin: 0, minFare: 10, surge: 1.0, rangePercent: 0, category: "metro" },
@@ -105,22 +109,22 @@ const RATES: Record<string, any> = {
   },
   chennai: {
     Rapido: {
-      Bike:  { base: 12, perKm: 6,  perMin: 0.5,  minFare: 22,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 18, perKm: 11, perMin: 0.75, minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 20, perKm: 12, perMin: 1.0, minFare: 38,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 28, perKm: 16, perMin: 1.5, minFare: 55,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 20, perKm: 11, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 35, perKm: 13, perMin: 1.25, minFare: 70,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 45, perKm: 16, perMin: 1.5,  minFare: 90,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 28, perKm: 16, perMin: 1.5, minFare: 55,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 45, perKm: 19, perMin: 2.0, minFare: 85,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 65, perKm: 25, perMin: 2.5, minFare: 120, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 12, perKm: 7,  perMin: 0.75, minFare: 25,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 20, perKm: 11, perMin: 1,    minFare: 40,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 38, perKm: 14, perMin: 1.5,  minFare: 78,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 52, perKm: 19, perMin: 2,    minFare: 105, surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 18, perKm: 12, perMin: 1.2, minFare: 40,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 28, perKm: 17, perMin: 1.5, minFare: 58,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 50, perKm: 21, perMin: 2.0, minFare: 100, surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 72, perKm: 27, perMin: 2.8, minFare: 140, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 30, perKm: 11, perMin: 1, minFare: 60, surge: 1.0, rangePercent: 20, category: "cab" },
+      Sedan: { base: 40, perKm: 16, perMin: 1.5, minFare: 75,  surge: 1.0, rangePercent: 20, category: "cab" },
     },
     Metro: {
       "Chennai Metro": { base: 10, perKm: 3, perMin: 0, minFare: 10, surge: 1.0, rangePercent: 0, category: "metro" },
@@ -128,39 +132,39 @@ const RATES: Record<string, any> = {
   },
   pune: {
     Rapido: {
-      Bike:  { base: 12, perKm: 6,  perMin: 0.5,  minFare: 20,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 18, perKm: 10, perMin: 0.75, minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 18, perKm: 11, perMin: 1.0, minFare: 32,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 25, perKm: 14, perMin: 1.5, minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 18, perKm: 11, perMin: 1,    minFare: 38,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 32, perKm: 12, perMin: 1.25, minFare: 65,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 42, perKm: 15, perMin: 1.5,  minFare: 85,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 25, perKm: 15, perMin: 1.5, minFare: 50,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 42, perKm: 18, perMin: 2.0, minFare: 80,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 62, perKm: 23, perMin: 2.5, minFare: 115, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 12, perKm: 6,  perMin: 0.75, minFare: 22,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 18, perKm: 11, perMin: 1,    minFare: 38,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 35, perKm: 13, perMin: 1.5,  minFare: 72,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 48, perKm: 18, perMin: 2,    minFare: 98,  surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 16, perKm: 11, perMin: 1.2, minFare: 35,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 25, perKm: 15, perMin: 1.5, minFare: 52,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 48, perKm: 19, perMin: 2.0, minFare: 95,  surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 70, perKm: 25, perMin: 2.8, minFare: 135, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     InDrive: {
-      Sedan: { base: 28, perKm: 10, perMin: 1, minFare: 55, surge: 1.0, rangePercent: 20, category: "cab" },
+      Sedan: { base: 38, perKm: 15, perMin: 1.5, minFare: 72,  surge: 1.0, rangePercent: 20, category: "cab" },
     },
   },
   kolkata: {
     Rapido: {
-      Bike:  { base: 10, perKm: 5,  perMin: 0.5,  minFare: 18,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 15, perKm: 9,  perMin: 0.75, minFare: 30,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 15, perKm: 10, perMin: 1.0, minFare: 28,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 22, perKm: 13, perMin: 1.5, minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 18, perKm: 10, perMin: 1,    minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 30, perKm: 11, perMin: 1.25, minFare: 60,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 40, perKm: 14, perMin: 1.5,  minFare: 80,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 22, perKm: 14, perMin: 1.5, minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 38, perKm: 17, perMin: 2.0, minFare: 72,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 55, perKm: 22, perMin: 2.5, minFare: 105, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 10, perKm: 5,  perMin: 0.75, minFare: 20,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 18, perKm: 10, perMin: 1,    minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 32, perKm: 12, perMin: 1.5,  minFare: 68,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 45, perKm: 17, perMin: 2,    minFare: 92,  surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 14, perKm: 10, perMin: 1.2, minFare: 30,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 22, perKm: 14, perMin: 1.5, minFare: 48,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 42, perKm: 18, perMin: 2.0, minFare: 85,  surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 62, perKm: 23, perMin: 2.8, minFare: 120, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     Metro: {
       "Kolkata Metro": { base: 5, perKm: 2, perMin: 0, minFare: 5, surge: 1.0, rangePercent: 0, category: "metro" },
@@ -168,19 +172,19 @@ const RATES: Record<string, any> = {
   },
   ahmedabad: {
     Rapido: {
-      Bike:  { base: 10, perKm: 5,  perMin: 0.5,  minFare: 18,  surge: 1.0, rangePercent: 8,  category: "bike" },
-      Auto:  { base: 15, perKm: 9,  perMin: 0.75, minFare: 30,  surge: 1.0, rangePercent: 10, category: "auto" },
+      Bike:  { base: 15, perKm: 10, perMin: 1.0, minFare: 28,  surge: 1.0, rangePercent: 8,  category: "bike" },
+      Auto:  { base: 22, perKm: 13, perMin: 1.5, minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto" },
     },
     Ola: {
-      Auto:  { base: 18, perKm: 10, perMin: 1,    minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Mini:  { base: 30, perKm: 11, perMin: 1.25, minFare: 60,  surge: 1.0, rangePercent: 12, category: "cab"     },
-      Prime: { base: 40, perKm: 14, perMin: 1.5,  minFare: 80,  surge: 1.0, rangePercent: 15, category: "premium" },
+      Auto:  { base: 22, perKm: 13, perMin: 1.5, minFare: 45,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Mini:  { base: 38, perKm: 16, perMin: 2.0, minFare: 72,  surge: 1.0, rangePercent: 12, category: "cab"     },
+      Prime: { base: 55, perKm: 21, perMin: 2.5, minFare: 105, surge: 1.0, rangePercent: 15, category: "premium" },
     },
     Uber: {
-      Moto:    { base: 10, perKm: 5,  perMin: 0.75, minFare: 20,  surge: 1.1, rangePercent: 10, category: "bike"    },
-      Auto:    { base: 18, perKm: 10, perMin: 1,    minFare: 35,  surge: 1.0, rangePercent: 10, category: "auto"    },
-      Go:      { base: 32, perKm: 12, perMin: 1.5,  minFare: 68,  surge: 1.2, rangePercent: 15, category: "cab"     },
-      Premier: { base: 45, perKm: 17, perMin: 2,    minFare: 92,  surge: 1.0, rangePercent: 18, category: "premium" },
+      Moto:    { base: 14, perKm: 10, perMin: 1.2, minFare: 30,  surge: 1.1, rangePercent: 10, category: "bike"    },
+      Auto:    { base: 22, perKm: 13, perMin: 1.5, minFare: 48,  surge: 1.0, rangePercent: 10, category: "auto"    },
+      Go:      { base: 42, perKm: 17, perMin: 2.0, minFare: 85,  surge: 1.2, rangePercent: 15, category: "cab"     },
+      Premier: { base: 60, perKm: 22, perMin: 2.8, minFare: 115, surge: 1.0, rangePercent: 18, category: "premium" },
     },
     Metro: {
       "Ahmedabad Metro": { base: 5, perKm: 2.5, perMin: 0, minFare: 5, surge: 1.0, rangePercent: 0, category: "metro" },
